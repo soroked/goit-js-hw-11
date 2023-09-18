@@ -54,7 +54,7 @@ async function formHandler(e) {
         buttonMore.removeEventListener('click', loadMoreHandler);
         buttonMore.classList.add('is-hidden');
         if (request.data.totalHits) {
-          Notify.info("We're sorry, but you've reached the end of search results.")
+          Notify.info("We're sorry, but you've reached the end of search results.");
         } 
       }
 
@@ -69,7 +69,9 @@ async function formHandler(e) {
 
     } catch (error) {
       console.log(error);
-    }  
+    }
+  } else {
+    Notify.info("The field can not be empty. Please enter something to search...");
   }
 };
 
