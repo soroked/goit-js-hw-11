@@ -1,9 +1,7 @@
-// 1. замінити картинки
-// 2. PER_PAGE ?? як можна по іншому отримати доступ до per_page
-// 3. де обробляти клас кнопки??
-
-import { makeRequest } from "./js/pixabay-api";
+import { getPhotos, PER_PAGE } from "./js/pixabay-api";
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
 
 const formRef = document.querySelector('#search-form');
 const gallery = document.querySelector('.gallery');
@@ -11,39 +9,75 @@ export const buttonMore = document.querySelector('.load-more');
 
 let page = 1;
 let query = '';
+let lightbox;
 
-export async function loadMoreHandler() {
+async function loadMoreHandler() {
   page += 1;
   buttonMore.classList.add('is-hidden');
 
-  const request = await makeRequest(page, query);
-  render(request.hits, gallery);
+  try {
+    const request = await getPhotos(page, query);
 
-  if (page === 13) {
-    Notify.info("We're sorry, but you've reached the end of search results.")
+    buttonMore.classList.remove('is-hidden');
+
+    if (request.data.totalHits < PER_PAGE * page) {
+      buttonMore.removeEventListener('click', loadMoreHandler);
+      buttonMore.classList.add('is-hidden');
+      if (request.data.totalHits) {
+        Notify.info("We're sorry, but you've reached the end of search results.")
+      } 
+    }
+
+    render(request.data.hits, gallery);
+    lightbox.refresh();
+
+  } catch (error) {
+    console.log(error);
   }
 };
 
 async function formHandler(e) {
   e.preventDefault();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   page = 1;
   query = e.currentTarget.searchQuery.value;
 
-  const request = await makeRequest(page, query);
+  if (query.trim()) {
+    try {
+      const request = await getPhotos(page, query);
 
-  if (!request.hits.length) {
-    Notify.failure("Sorry, there are no images matching your search query. Please try again.");
-  } else {
-    Notify.success(`Hooray! We found ${request.totalHits} images.`);
+      buttonMore.classList.remove('is-hidden');
+      buttonMore.addEventListener('click', loadMoreHandler);
+
+      if (request.data.totalHits < PER_PAGE * page) {
+        buttonMore.removeEventListener('click', loadMoreHandler);
+        buttonMore.classList.add('is-hidden');
+        if (request.data.totalHits) {
+          Notify.info("We're sorry, but you've reached the end of search results.")
+        } 
+      }
+
+      if (!request.data.hits.length) {
+        Notify.failure("Sorry, there are no images matching your search query. Please try again.");
+      } else {
+        Notify.success(`Hooray! We found ${request.data.totalHits} images.`);
+      }
+
+      render(request.data.hits, gallery);
+      lightbox = new SimpleLightbox('.gallery a');
+
+    } catch (error) {
+      console.log(error);
+    }  
   }
-
-  render(request.hits, gallery);
 };
 
 function render(arr, container) {
   const markup = arr.map(item => `<div class="photo-card">
+    <a href="${item.largeImageURL}">
     <img src="${item.webformatURL}" width="300" alt="${item.tags}" loading="lazy" />
+    </a>
     <div class="info">
       <p class="info-item">
         <b>Likes</b> ${item.likes}
